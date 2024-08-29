@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>WebServer</title>
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0, 0, 0);
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <br />
+    <form action="5" method="post">
+        <div align="center"><button type="submit">查看图片</button></div>
+    </form>
+    <br />
+    <form action="6" method="post">
+        <div align="center"><button type="submit">查看视频</button></div>
+    </form>
+    <!-- 文件上传表单 -->
+    <form id="uploadForm" action="8" method="post" enctype="multipart/form-data">
+        <div align="center">
+            <input type="file" name="uploadedFile" />
+            <button type="submit">上传文件</button>
+        </div>
+    </form>
+    <br />
+
+    <!-- 模态弹窗 -->
+    <div id="myModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <p id="modalText">文件上传完成！</p>
+        </div>
+    </div>
+
+    <!-- 模态弹窗 -->
+    <div id="actionModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <p id="actionModalText">操作结果</p>
+        </div>
+    </div>
+
+    <div id="fileListContainer" style="display:none;">
+        <table id="fileTable" border="1" align="center">
+            <thead>
+                <tr>
+                    <th>文件名</th>
+                    <th>删除</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be inserted here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        var fileNames = [];
+        document.addEventListener('DOMContentLoaded', function () {
+            var form = document.getElementById('uploadForm');
+            var modal = document.getElementById('myModal');
+            var actionModal = document.getElementById('actionModal');
+            var span = document.getElementsByClassName("close");
+
+
+            // 关闭模态框
+            Array.from(span).forEach(function (element) {
+                element.onclick = function () {
+                    actionModal.style.display = "none";
+                    modal.style.display = "none";
+                }
+            });
+
+            // 点击模态框外部关闭模态框
+            window.onclick = function (event) {
+                if (event.target == modal || event.target == actionModal) {
+                    modal.style.display = "none";
+                    actionModal.style.display = "none";
+                }
+            }
+
+            form.addEventListener('submit', function (event) {
+                event.preventDefault(); // 阻止表单的默认提交行为
+                var fileInput = form.querySelector('input[type="file"]');
+                if (!fileInput || fileInput.files.length === 0) {
+                    modalText.textContent = '请选择文件上传。';
+                    modal.style.display = 'block';
+                    return;
+                }
+
+                var file = fileInput.files[0];
+                var fileName = file.name;
+                // 检查 fileName 是否在 fileNames 数组中
+                if (fileNames.includes(fileName)) {
+                    modalText.textContent = '文件已存在，上传被取消。';
+                    modal.style.display = 'block';
+                    return;
+                }
+                var formData = new FormData(form);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open(form.method, form.action, true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        // 文件上传成功
+                        modalText.textContent = '文件上传成功！'; // 自定义成功消息
+                        modal.style.display = 'block'; // 显示模态弹窗
+                        console.log('Response content:', xhr.responseText);
+                        // 将响应文本分割成文件名数组
+                        fileNames = xhr.responseText.split('\n');
+                        // 创建表格
+                        createFileTable(fileNames);
+                    }
+                    else {
+                        modalText.textContent = '文件上传失败，请重试。'; // 自定义失败消息
+                        modal.style.display = 'block'; // 显示模态弹窗
+                    }
+                };
+                xhr.onerror = function () {
+                    modalText.textContent = '文件上传出错，请检查网络连接。';
+                    modal.style.display = 'block'; // 显示模态弹窗
+                };
+                xhr.send(formData);
+            });
+
+            // 点击<x>按钮关闭模态框
+            span.onclick = function () {
+                modal.style.display = "none";
+            }
+
+            // 点击模态框外的地方也关闭模态框
+            window.onclick = function (event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            }
+        });
+
+        function createFileTable(fileNames) {
+            var tableBody = document.getElementById('fileTable').getElementsByTagName('tbody')[0];
+            // 清空现有的行
+            tableBody.innerHTML = '';
+
+            fileNames.forEach(function (fileName) {
+                if (fileName.trim() !== "") {
+                    var row = document.createElement('tr');
+
+                    // 文件名单元格
+                    var nameCell = document.createElement('td');
+                    nameCell.textContent = fileName;
+                    row.appendChild(nameCell);
+
+                    // 删除按钮单元格
+                    var deleteCell = document.createElement('td');
+                    var deleteButton = document.createElement('button');
+                    deleteButton.textContent = '删除';
+                    deleteButton.onclick = function () {
+                        // 定义删除操作
+                        sendPostRequest(fileName, 'delete');
+                    };
+                    deleteCell.appendChild(deleteButton);
+                    row.appendChild(deleteCell);
+
+                    tableBody.appendChild(row);
+                }
+            });
+
+            // 如果表格有内容，显示表格
+            if (fileNames.length > 0) {
+                document.getElementById('fileListContainer').style.display = 'block';
+            }
+        }
+
+        // 发送POST请求的函数并处理响应
+        function sendPostRequest(fileName, action) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/' + encodeURIComponent(fileName), true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function () {
+                var actionModal = document.getElementById('actionModal');
+                var modalText = document.getElementById('actionModalText');
+
+                if (xhr.status === 200) {
+                    modalText.textContent = action + '操作成功：' + fileName;
+                    fileNames = xhr.responseText.split('\n');
+                    createFileTable(fileNames);
+                } else {
+                    modalText.textContent = action + '操作失败：' + fileName;
+                }
+
+                actionModal.style.display = 'block'; // 显示操作结果模态弹窗
+            };
+            xhr.onerror = function () {
+                var actionModal = document.getElementById('actionModal');
+                var modalText = document.getElementById('actionModalText');
+
+                modalText.textContent = action + '操作出错：' + fileName + '\n请检查网络连接。';
+                actionModal.style.display = 'block'; // 显示操作结果模态弹窗
+            };
+            xhr.send(action);
+        }
+    </script>
+</body>
+
+</html>
