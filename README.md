@@ -1,4 +1,4 @@
-![屏幕截图 2024-08-20 222439](https://github.com/user-attachments/assets/52e39b57-978c-4b1b-ac8e-c28c6e86240e)WebServer
+WebServer
 ===============
 	
 本项目基于Linux环境，使用C/C++开发了一个轻量级多线程HTTP服务器。服务器支持多客户端并发连接，提供图片、视频资源访问以及文件上传和删除功能。
